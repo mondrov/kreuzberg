@@ -8,6 +8,22 @@ use std::collections::HashMap;
 
 use super::elements::{add_paragraphs, detect_list_items, generate_element_id};
 
+/// Slice `s` by byte range, clamping to UTF-8 char boundaries to avoid panics.
+fn slice_at_char_boundaries(s: &str, start: usize, end: usize) -> &str {
+    let mut start = start.min(s.len());
+    let mut end = end.min(s.len());
+    while start > 0 && !s.is_char_boundary(start) {
+        start -= 1;
+    }
+    while end < s.len() && !s.is_char_boundary(end) {
+        end += 1;
+    }
+    if start >= end {
+        return "";
+    }
+    &s[start..end]
+}
+
 /// Process page content to extract paragraphs and list items.
 pub(super) fn process_content(elements: &mut Vec<Element>, content: &str, page_number: usize, title: &Option<String>) {
     let list_items = detect_list_items(content);
@@ -16,12 +32,12 @@ pub(super) fn process_content(elements: &mut Vec<Element>, content: &str, page_n
     for list_item in list_items {
         // Add narrative text/paragraphs before this list item
         if current_byte_offset < list_item.byte_start {
-            let text_slice = content[current_byte_offset..list_item.byte_start].trim();
+            let text_slice = slice_at_char_boundaries(content, current_byte_offset, list_item.byte_start).trim();
             add_paragraphs(elements, text_slice, page_number, title);
         }
 
         // Add the list item itself
-        let item_text = content[list_item.byte_start..list_item.byte_end].trim();
+        let item_text = slice_at_char_boundaries(content, list_item.byte_start, list_item.byte_end).trim();
         if !item_text.is_empty() {
             let element_id = generate_element_id(item_text, ElementType::ListItem, Some(page_number));
             elements.push(Element {
@@ -48,7 +64,7 @@ pub(super) fn process_content(elements: &mut Vec<Element>, content: &str, page_n
 
     // Add any remaining narrative text/paragraphs
     if current_byte_offset < content.len() {
-        let text_slice = content[current_byte_offset..].trim();
+        let text_slice = slice_at_char_boundaries(content, current_byte_offset, content.len()).trim();
         add_paragraphs(elements, text_slice, page_number, title);
     }
 }
