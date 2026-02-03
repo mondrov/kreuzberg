@@ -1,6 +1,8 @@
 //! Core extraction types and results.
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use super::djot::DjotContent;
@@ -12,9 +14,12 @@ use super::tables::Table;
 ///
 /// This is the main result type returned by all extraction functions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "api", schema(no_recursion))]
 pub struct ExtractionResult {
     pub content: String,
-    pub mime_type: String,
+    #[cfg_attr(feature = "api", schema(value_type = String))]
+    pub mime_type: Cow<'static, str>,
     pub metadata: Metadata,
     pub tables: Vec<Table>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -75,6 +80,7 @@ pub struct ExtractionResult {
 /// contains the text content, optional embedding vector (if embedding generation
 /// is configured), and metadata about its position in the document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct Chunk {
     /// The text content of this chunk.
     pub content: String,
@@ -92,6 +98,7 @@ pub struct Chunk {
 
 /// Metadata about a chunk's position in the original document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct ChunkMetadata {
     /// Byte offset where this chunk starts in the original text (UTF-8 valid boundary).
     pub byte_start: usize,
@@ -130,12 +137,17 @@ pub struct ChunkMetadata {
 /// Raw bytes allow cross-language compatibility - users can convert to
 /// PIL.Image (Python), Sharp (Node.js), or other formats as needed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct ExtractedImage {
-    /// Raw image data (PNG, JPEG, WebP, etc. bytes)
-    pub data: Vec<u8>,
+    /// Raw image data (PNG, JPEG, WebP, etc. bytes).
+    /// Uses `bytes::Bytes` for cheap cloning of large buffers.
+    #[cfg_attr(feature = "api", schema(value_type = Vec<u8>, format = "binary"))]
+    pub data: Bytes,
 
     /// Image format (e.g., "jpeg", "png", "webp")
-    pub format: String,
+    /// Uses Cow<'static, str> to avoid allocation for static literals.
+    #[cfg_attr(feature = "api", schema(value_type = String))]
+    pub format: Cow<'static, str>,
 
     /// Zero-indexed position of this image in the document/page
     pub image_index: usize,
@@ -173,6 +185,7 @@ pub struct ExtractedImage {
     /// When OCR is performed on this image, the result is embedded here
     /// rather than in a separate collection, making the relationship explicit.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "api", schema(value_type = Option<ExtractionResult>))]
     pub ocr_result: Option<Box<ExtractionResult>>,
 }
 
@@ -182,6 +195,7 @@ pub struct ExtractedImage {
 
 /// Output format selection for extraction results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum OutputFormat {
     /// Unified format with all content in `content` field
@@ -196,6 +210,8 @@ pub enum OutputFormat {
 /// Wraps a string identifier that is deterministically generated
 /// from element type, content, and page number.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "api", schema(value_type = String))]
 pub struct ElementId(String);
 
 impl ElementId {
@@ -230,6 +246,7 @@ impl std::fmt::Display for ElementId {
 /// Categorizes text content into semantic units for downstream processing.
 /// Supports the element types commonly found in Unstructured documents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum ElementType {
     /// Document title
@@ -258,6 +275,7 @@ pub enum ElementType {
 
 /// Bounding box coordinates for element positioning.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct BoundingBox {
     /// Left x-coordinate
     pub x0: f64,
@@ -271,6 +289,7 @@ pub struct BoundingBox {
 
 /// Metadata for a semantic element.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct ElementMetadata {
     /// Page number (1-indexed)
     pub page_number: Option<usize>,
@@ -289,6 +308,7 @@ pub struct ElementMetadata {
 /// Represents a logical unit of content with semantic classification,
 /// unique identifier, and metadata for tracking origin and position.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct Element {
     /// Unique element identifier
     pub element_id: ElementId,

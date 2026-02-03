@@ -21,6 +21,8 @@ use super::metadata::Metadata;
 ///
 /// Available when the `djot` feature is enabled.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "api", schema(no_recursion))]
 pub struct DjotContent {
     /// Plain text representation for backwards compatibility
     pub plain_text: String,
@@ -44,14 +46,16 @@ pub struct DjotContent {
     pub footnotes: Vec<Footnote>,
 
     /// Attributes mapped by element identifier (if present)
-    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
-    pub attributes: HashMap<String, Attributes>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub attributes: Vec<(String, Attributes)>,
 }
 
 /// Block-level element in a Djot document.
 ///
 /// Represents structural elements like headings, paragraphs, lists, code blocks, etc.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+#[cfg_attr(feature = "api", schema(no_recursion))]
 pub struct FormattedBlock {
     /// Type of block element
     pub block_type: BlockType,
@@ -83,6 +87,7 @@ pub struct FormattedBlock {
 /// Types of block-level elements in Djot.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub enum BlockType {
     Paragraph,
     Heading,
@@ -106,6 +111,7 @@ pub enum BlockType {
 ///
 /// Represents text with formatting, links, images, etc.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct InlineElement {
     /// Type of inline element
     pub element_type: InlineType,
@@ -125,6 +131,7 @@ pub struct InlineElement {
 /// Types of inline elements in Djot.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub enum InlineType {
     Text,
     Strong,
@@ -148,6 +155,7 @@ pub enum InlineType {
 ///
 /// Represents the attributes attached to elements using {.class #id key="value"} syntax.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct Attributes {
     /// Element ID (#identifier)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -158,12 +166,13 @@ pub struct Attributes {
     pub classes: Vec<String>,
 
     /// Key-value pairs (key="value")
-    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
-    pub key_values: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub key_values: Vec<(String, String)>,
 }
 
 /// Image element in Djot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct DjotImage {
     /// Image source URL or path
     pub src: String,
@@ -182,6 +191,7 @@ pub struct DjotImage {
 
 /// Link element in Djot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct DjotLink {
     /// Link URL
     pub url: String,
@@ -200,6 +210,7 @@ pub struct DjotLink {
 
 /// Footnote in Djot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct Footnote {
     /// Footnote label
     pub label: String,

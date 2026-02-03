@@ -166,8 +166,8 @@ impl TryFrom<RustExtractionResult> for JsExtractionResult {
                 };
 
                 js_images.push(JsExtractedImage {
-                    data: img.data.into(),
-                    format: img.format,
+                    data: img.data.to_vec().into(),
+                    format: img.format.into_owned(),
                     image_index: img.image_index as u32,
                     page_number: img.page_number.map(|p| p as u32),
                     width: img.width,
@@ -217,8 +217,8 @@ impl TryFrom<RustExtractionResult> for JsExtractionResult {
                         };
 
                         JsExtractedImage {
-                            data: img.data.clone().into(),
-                            format: img.format.clone(),
+                            data: img.data.to_vec().into(),
+                            format: img.format.to_string(),
                             image_index: img.image_index as u32,
                             page_number: img.page_number.map(|p| p as u32),
                             width: img.width,
@@ -300,7 +300,7 @@ impl TryFrom<RustExtractionResult> for JsExtractionResult {
 
         Ok(JsExtractionResult {
             content: val.content,
-            mime_type: val.mime_type,
+            mime_type: val.mime_type.to_string(),
             metadata,
             tables: val
                 .tables
@@ -389,7 +389,10 @@ impl TryFrom<JsExtractionResult> for RustExtractionResult {
                 None
             };
 
-            let additional = metadata_map;
+            let additional = metadata_map
+                .into_iter()
+                .map(|(k, v)| (std::borrow::Cow::Owned(k), v))
+                .collect();
 
             kreuzberg::Metadata {
                 language,
@@ -422,8 +425,8 @@ impl TryFrom<JsExtractionResult> for RustExtractionResult {
                 };
 
                 rust_images.push(kreuzberg::ExtractedImage {
-                    data: img.data.to_vec(),
-                    format: img.format,
+                    data: bytes::Bytes::from(img.data.to_vec()),
+                    format: std::borrow::Cow::Owned(img.format),
                     image_index: img.image_index as usize,
                     page_number: img.page_number.map(|p| p as usize),
                     width: img.width,
@@ -486,7 +489,7 @@ impl TryFrom<JsExtractionResult> for RustExtractionResult {
 
         Ok(RustExtractionResult {
             content: val.content,
-            mime_type: val.mime_type,
+            mime_type: std::borrow::Cow::Owned(val.mime_type),
             metadata,
             tables: val
                 .tables

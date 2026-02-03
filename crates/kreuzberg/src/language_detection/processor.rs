@@ -87,6 +87,7 @@ mod tests {
     use super::*;
     use crate::core::config::LanguageDetectionConfig;
     use crate::types::Metadata;
+    use std::borrow::Cow;
 
     #[tokio::test]
     async fn test_language_detector_processor() {
@@ -102,7 +103,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Hello world! This is a test of the language detection system.".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -128,7 +129,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Hello world!".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -165,7 +166,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "Sample text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -196,7 +197,7 @@ mod tests {
 
         let short_result = ExtractionResult {
             content: "Short".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -209,7 +210,7 @@ mod tests {
 
         let long_result = ExtractionResult {
             content: "a".repeat(10000),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,

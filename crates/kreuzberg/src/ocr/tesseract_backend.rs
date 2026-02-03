@@ -8,7 +8,9 @@ use crate::core::config::OcrConfig;
 use crate::ocr::processor::OcrProcessor;
 use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
 use crate::types::ExtractionResult;
+use ahash::AHashMap;
 use async_trait::async_trait;
+use std::borrow::Cow;
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
 
@@ -196,9 +198,23 @@ impl OcrBackend for TesseractBackend {
             source: Some(Box::new(e)),
         })?;
 
+        // Use resolved language from OCR result metadata (handles "all"/"*" resolution)
+        let resolved_language = ocr_result
+            .metadata
+            .get("language")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&tess_config.language)
+            .to_string();
+
+        // Convert HashMap<String, Value> to AHashMap<Cow<'static, str>, Value>
+        let mut additional = AHashMap::new();
+        for (key, value) in ocr_result.metadata {
+            additional.insert(Cow::Owned(key), value);
+        }
+
         let metadata = crate::types::Metadata {
             format: Some(crate::types::FormatMetadata::Ocr(crate::types::OcrMetadata {
-                language: tess_config.language.clone(),
+                language: resolved_language,
                 psm: tess_config.psm as i32,
                 output_format: tess_config.output_format.clone(),
                 table_count: ocr_result.tables.len(),
@@ -208,13 +224,13 @@ impl OcrBackend for TesseractBackend {
                     .first()
                     .and_then(|t| t.cells.first().map(|row| row.len())),
             })),
-            additional: ocr_result.metadata,
+            additional,
             ..Default::default()
         };
 
         Ok(ExtractionResult {
             content: ocr_result.content,
-            mime_type: ocr_result.mime_type,
+            mime_type: ocr_result.mime_type.into(),
             metadata,
             pages: None,
             tables: ocr_result
@@ -256,9 +272,23 @@ impl OcrBackend for TesseractBackend {
             source: Some(Box::new(e)),
         })?;
 
+        // Use resolved language from OCR result metadata (handles "all"/"*" resolution)
+        let resolved_language = ocr_result
+            .metadata
+            .get("language")
+            .and_then(|v| v.as_str())
+            .unwrap_or(&tess_config.language)
+            .to_string();
+
+        // Convert HashMap<String, Value> to AHashMap<Cow<'static, str>, Value>
+        let mut additional = AHashMap::new();
+        for (key, value) in ocr_result.metadata {
+            additional.insert(Cow::Owned(key), value);
+        }
+
         let metadata = crate::types::Metadata {
             format: Some(crate::types::FormatMetadata::Ocr(crate::types::OcrMetadata {
-                language: tess_config.language.clone(),
+                language: resolved_language,
                 psm: tess_config.psm as i32,
                 output_format: tess_config.output_format.clone(),
                 table_count: ocr_result.tables.len(),
@@ -268,13 +298,13 @@ impl OcrBackend for TesseractBackend {
                     .first()
                     .and_then(|t| t.cells.first().map(|row| row.len())),
             })),
-            additional: ocr_result.metadata,
+            additional,
             ..Default::default()
         };
 
         Ok(ExtractionResult {
             content: ocr_result.content,
-            mime_type: ocr_result.mime_type,
+            mime_type: ocr_result.mime_type.into(),
             metadata,
             pages: None,
             tables: ocr_result

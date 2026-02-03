@@ -83,6 +83,7 @@ pub(super) fn format_extraction_result(result: &KreuzbergResult) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Cow;
 
     #[test]
     fn test_build_config_with_no_config() {
@@ -290,7 +291,7 @@ mod tests {
     fn test_format_extraction_result_is_valid_json() {
         let result = KreuzbergResult {
             content: "Sample extracted text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -313,7 +314,7 @@ mod tests {
     fn test_format_extraction_result_includes_tables() {
         let result = KreuzbergResult {
             content: "Document with tables".to_string(),
-            mime_type: "application/pdf".to_string(),
+            mime_type: Cow::Borrowed("application/pdf"),
             metadata: crate::Metadata::default(),
             tables: vec![crate::Table {
                 cells: vec![
@@ -342,7 +343,7 @@ mod tests {
     fn test_format_extraction_result_includes_chunks_when_present() {
         let result = KreuzbergResult {
             content: "Chunked text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -376,7 +377,7 @@ mod tests {
     fn test_format_extraction_result_omits_none_fields() {
         let result = KreuzbergResult {
             content: "Simple text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::Metadata::default(),
             tables: vec![],
             detected_languages: None,

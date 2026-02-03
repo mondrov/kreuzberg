@@ -5,7 +5,9 @@ use crate::core::config::ExtractionConfig;
 use crate::extractors::SyncExtractor;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::{EmailMetadata, ExtractionResult, Metadata};
+use ahash::AHashMap;
 use async_trait::async_trait;
+use std::borrow::Cow;
 #[cfg(feature = "tokio-runtime")]
 use std::path::Path;
 
@@ -66,14 +68,14 @@ impl SyncExtractor for EmailExtractor {
             attachments: attachment_names,
         };
 
-        let mut additional = std::collections::HashMap::new();
+        let mut additional = AHashMap::new();
         for (key, value) in &email_result.metadata {
-            additional.insert(key.clone(), serde_json::json!(value));
+            additional.insert(Cow::Owned(key.clone()), serde_json::json!(value));
         }
 
         Ok(ExtractionResult {
             content: text,
-            mime_type: mime_type.to_string(),
+            mime_type: mime_type.to_string().into(),
             metadata: Metadata {
                 format: Some(crate::types::FormatMetadata::Email(email_metadata)),
                 subject: email_result.subject.clone(),

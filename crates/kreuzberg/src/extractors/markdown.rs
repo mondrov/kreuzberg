@@ -28,6 +28,8 @@ use crate::types::{ExtractionResult, Metadata, Table};
 use async_trait::async_trait;
 #[cfg(feature = "office")]
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+#[cfg(feature = "office")]
+use std::borrow::Cow;
 
 /// Enhanced Markdown extractor with metadata and table support.
 ///
@@ -113,7 +115,7 @@ impl MarkdownExtractor {
                     if !current_row.is_empty()
                         && let Some((ref mut rows, _)) = current_table
                     {
-                        rows.push(current_row.clone());
+                        rows.push(std::mem::take(&mut current_row));
                     }
                     current_row = Vec::new();
                 }
@@ -121,7 +123,7 @@ impl MarkdownExtractor {
                     if !current_row.is_empty()
                         && let Some((ref mut rows, _)) = current_table
                     {
-                        rows.push(current_row.clone());
+                        rows.push(std::mem::take(&mut current_row));
                     }
                     current_row = Vec::new();
                 }
@@ -211,7 +213,7 @@ impl DocumentExtractor for MarkdownExtractor {
         if !metadata.additional.contains_key("title")
             && let Some(title) = extract_title_from_content(&remaining_content)
         {
-            metadata.additional.insert("title".to_string(), title.into());
+            metadata.additional.insert(Cow::Borrowed("title"), title.into());
         }
 
         let parser = Parser::new_ext(&remaining_content, Options::ENABLE_TABLES);
@@ -223,7 +225,7 @@ impl DocumentExtractor for MarkdownExtractor {
 
         Ok(ExtractionResult {
             content: extracted_text,
-            mime_type: mime_type.to_string(),
+            mime_type: mime_type.to_string().into(),
             metadata,
             tables,
             detected_languages: None,

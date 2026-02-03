@@ -21,6 +21,8 @@ use crate::types::{Element, ExtractionResult};
 use content::{
     add_page_break, format_table_as_text, process_content, process_hierarchy, process_images, process_tables,
 };
+#[cfg(test)]
+use std::borrow::Cow;
 
 /// Transform an extraction result into semantic elements.
 ///
@@ -117,7 +119,7 @@ pub fn transform_extraction_result_to_elements(result: &ExtractionResult) -> Vec
                         element_index: Some(elements.len()),
                         additional: {
                             let mut m = std::collections::HashMap::new();
-                            m.insert("format".to_string(), image.format.clone());
+                            m.insert("format".to_string(), image.format.to_string());
                             if let Some(width) = image.width {
                                 m.insert("width".to_string(), width.to_string());
                             }
@@ -138,6 +140,7 @@ pub fn transform_extraction_result_to_elements(result: &ExtractionResult) -> Vec
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytes::Bytes;
 
     #[test]
     fn test_detect_bullet_items() {
@@ -262,7 +265,7 @@ mod tests {
         // Create a mock result with pages and hierarchy
         let result = ExtractionResult {
             content: "Full document content".to_string(),
-            mime_type: "application/pdf".to_string(),
+            mime_type: Cow::Borrowed("application/pdf"),
             metadata: test_metadata(Some("Test Document".to_string())),
             tables: vec![],
             detected_languages: None,
@@ -358,8 +361,8 @@ mod tests {
         };
 
         let image = ExtractedImage {
-            data: vec![1, 2, 3, 4],
-            format: "jpeg".to_string(),
+            data: Bytes::from_static(&[1, 2, 3, 4]),
+            format: std::borrow::Cow::Borrowed("jpeg"),
             image_index: 0,
             page_number: Some(1),
             width: Some(640),
@@ -373,7 +376,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "Test content".to_string(),
-            mime_type: "application/pdf".to_string(),
+            mime_type: Cow::Borrowed("application/pdf"),
             metadata: test_metadata(Some("Test".to_string())),
             tables: vec![],
             detected_languages: None,
@@ -421,7 +424,7 @@ mod tests {
         // Create a result without pages
         let result = ExtractionResult {
             content: "Simple text content\n\nSecond paragraph".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: test_metadata(Some("Simple Doc".to_string())),
             tables: vec![],
             detected_languages: None,
@@ -453,7 +456,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: test_metadata(None),
             tables: vec![],
             detected_languages: None,

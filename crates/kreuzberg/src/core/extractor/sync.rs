@@ -107,7 +107,7 @@ pub fn extract_bytes_sync(content: &[u8], mime_type: &str, config: &ExtractionCo
 /// It calls `extract_bytes_sync_impl()` to perform the extraction.
 #[cfg(not(feature = "tokio-runtime"))]
 pub fn extract_bytes_sync(content: &[u8], mime_type: &str, config: &ExtractionConfig) -> Result<ExtractionResult> {
-    super::legacy::extract_bytes_sync_impl(content.to_vec(), Some(mime_type.to_string()), Some(config.clone()))
+    super::legacy::extract_bytes_sync_impl(content, Some(mime_type), Some(config))
 }
 
 /// Synchronous wrapper for `batch_extract_file`.
@@ -180,14 +180,14 @@ pub fn batch_extract_bytes_sync(
     config: &ExtractionConfig,
 ) -> Result<Vec<ExtractionResult>> {
     use crate::types::{ErrorMetadata, Metadata};
-    use crate::utils::intern_mime_type;
+    use std::borrow::Cow;
 
     let mut results = Vec::with_capacity(contents.len());
     for (content, mime_type) in contents {
         let result = extract_bytes_sync(&content, &mime_type, config);
         results.push(result.unwrap_or_else(|e| ExtractionResult {
             content: format!("Error: {}", e),
-            mime_type: intern_mime_type("text/plain").to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata {
                 error: Some(ErrorMetadata {
                     error_type: format!("{:?}", e),

@@ -18,8 +18,9 @@ mod tests {
     use crate::core::config::ExtractionConfig;
     use crate::plugins::Plugin;
     use crate::types::ExtractionResult;
+    use ahash::AHashMap;
     use async_trait::async_trait;
-    use std::collections::HashMap;
+    use std::borrow::Cow;
 
     struct MockPostProcessor {
         stage: ProcessingStage,
@@ -49,7 +50,7 @@ mod tests {
             result
                 .metadata
                 .additional
-                .insert("processed_by".to_string(), serde_json::json!(self.name()));
+                .insert(Cow::Borrowed("processed_by"), serde_json::json!(self.name()));
             Ok(())
         }
 
@@ -66,7 +67,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "test content".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -118,7 +119,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -187,7 +188,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: String::new(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -211,12 +212,12 @@ mod tests {
             stage: ProcessingStage::Early,
         };
 
-        let mut additional = HashMap::new();
-        additional.insert("existing_key".to_string(), serde_json::json!("existing_value"));
+        let mut additional = AHashMap::new();
+        additional.insert(Cow::Borrowed("existing_key"), serde_json::json!("existing_value"));
 
         let mut result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata {
                 additional,
                 ..Default::default()
@@ -248,7 +249,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -301,7 +302,7 @@ mod tests {
 
         let pdf_result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "application/pdf".to_string(),
+            mime_type: Cow::Borrowed("application/pdf"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -314,7 +315,7 @@ mod tests {
 
         let txt_result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -345,7 +346,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![table],
             detected_languages: None,

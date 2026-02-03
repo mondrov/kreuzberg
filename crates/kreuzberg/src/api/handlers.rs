@@ -1,14 +1,11 @@
 //! API request handlers.
 
-use axum::{
-    Json,
-    extract::{Multipart, State},
-};
+use axum::{Json, extract::State};
 
 use crate::{batch_extract_bytes, cache, extract_bytes};
 
 use super::{
-    error::{ApiError, JsonApi},
+    error::{ApiError, JsonApi, MultipartApi},
     types::{
         ApiState, CacheClearResponse, CacheStatsResponse, ChunkRequest, ChunkResponse, EmbedRequest, EmbedResponse,
         ExtractResponse, HealthResponse, InfoResponse,
@@ -84,19 +81,18 @@ pub async fn info_handler() -> Json<InfoResponse> {
 ///
 /// The server's default config (loaded from kreuzberg.toml/yaml/json via discovery)
 /// is used as the base, and any per-request config overrides those defaults.
-// TODO: Add utoipa::path annotation once ExtractionResult implements ToSchema
-// #[utoipa::path(
-//     post,
-//     path = "/extract",
-//     tag = "extraction",
-//     request_body(content_type = "multipart/form-data"),
-//     responses(
-//         (status = 200, description = "Extraction successful", body = ExtractResponse),
-//         (status = 400, description = "Bad request", body = crate::api::types::ErrorResponse),
-//         (status = 413, description = "Payload too large", body = crate::api::types::ErrorResponse),
-//         (status = 500, description = "Internal server error", body = crate::api::types::ErrorResponse),
-//     )
-// )]
+#[utoipa::path(
+    post,
+    path = "/extract",
+    tag = "extraction",
+    request_body(content_type = "multipart/form-data"),
+    responses(
+        (status = 200, description = "Extraction successful", body = ExtractResponse),
+        (status = 400, description = "Bad request", body = crate::api::types::ErrorResponse),
+        (status = 413, description = "Payload too large", body = crate::api::types::ErrorResponse),
+        (status = 500, description = "Internal server error", body = crate::api::types::ErrorResponse),
+    )
+)]
 #[cfg_attr(
     feature = "otel",
     tracing::instrument(
@@ -107,10 +103,10 @@ pub async fn info_handler() -> Json<InfoResponse> {
 )]
 pub async fn extract_handler(
     State(state): State<ApiState>,
-    mut multipart: Multipart,
+    MultipartApi(mut multipart): MultipartApi,
 ) -> Result<Json<ExtractResponse>, ApiError> {
     let mut files = Vec::new();
-    let mut config = (*state.default_config).clone();
+    let mut config: Option<crate::core::config::ExtractionConfig> = None;
 
     while let Some(field) = multipart
         .next_field()
@@ -138,12 +134,12 @@ pub async fn extract_handler(
                     .await
                     .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
 
-                config = serde_json::from_str(&config_str).map_err(|e| {
+                config = Some(serde_json::from_str(&config_str).map_err(|e| {
                     ApiError::validation(crate::error::KreuzbergError::validation(format!(
                         "Invalid extraction configuration: {}",
                         e
                     )))
-                })?;
+                })?);
             }
             "output_format" => {
                 let format_str = field
@@ -151,7 +147,9 @@ pub async fn extract_handler(
                     .await
                     .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
 
-                config.output_format = match format_str.to_lowercase().as_str() {
+                // Ensure config exists before modifying output_format
+                let cfg = config.get_or_insert_with(|| (*state.default_config).clone());
+                cfg.output_format = match format_str.to_lowercase().as_str() {
                     "plain" => crate::core::config::OutputFormat::Plain,
                     "markdown" => crate::core::config::OutputFormat::Markdown,
                     "djot" => crate::core::config::OutputFormat::Djot,
@@ -177,18 +175,21 @@ pub async fn extract_handler(
     #[cfg(feature = "otel")]
     tracing::Span::current().record("files_count", files.len());
 
+    // Use provided config or fall back to default from state
+    let final_config = config.as_ref().unwrap_or(&state.default_config);
+
     if files.len() == 1 {
         let (data, mime_type, _file_name) = files
             .into_iter()
             .next()
             .expect("files.len() == 1 guarantees one element exists");
-        let result = extract_bytes(&data, mime_type.as_str(), &config).await?;
+        let result = extract_bytes(&data, mime_type.as_str(), final_config).await?;
         return Ok(Json(vec![result]));
     }
 
     let files_data: Vec<(Vec<u8>, String)> = files.into_iter().map(|(data, mime, _name)| (data, mime)).collect();
 
-    let results = batch_extract_bytes(files_data, &config).await?;
+    let results = batch_extract_bytes(files_data, final_config).await?;
     Ok(Json(results))
 }
 
@@ -492,6 +493,8 @@ pub async fn chunk_handler(JsonApi(request): JsonApi<ChunkRequest>) -> Result<Js
         overlap,
         trim: cfg.trim.unwrap_or(true),
         chunker_type,
+        embedding: None,
+        preset: None,
     };
 
     // Perform chunking - convert any remaining errors to validation errors since they're likely config issues

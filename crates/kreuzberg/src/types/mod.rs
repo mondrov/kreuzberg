@@ -20,6 +20,8 @@ pub use tables::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytes::Bytes;
+    use std::borrow::Cow;
     use std::sync::Arc;
 
     #[test]
@@ -38,7 +40,7 @@ mod tests {
 
         metadata
             .additional
-            .insert("quality_score".to_string(), serde_json::json!(1.0));
+            .insert(Cow::Borrowed("quality_score"), serde_json::json!(1.0));
 
         let json = serde_json::to_value(&metadata).unwrap();
         println!("Serialized metadata: {}", serde_json::to_string_pretty(&json).unwrap());
@@ -162,8 +164,8 @@ mod tests {
     #[test]
     fn test_page_content_arc_images_roundtrip() {
         let image1 = Arc::new(ExtractedImage {
-            data: vec![0xFF, 0xD8, 0xFF],
-            format: "jpeg".to_string(),
+            data: Bytes::from_static(&[0xFF, 0xD8, 0xFF]),
+            format: Cow::Borrowed("jpeg"),
             image_index: 0,
             page_number: Some(1),
             width: Some(100),
@@ -176,8 +178,8 @@ mod tests {
         });
 
         let image2 = Arc::new(ExtractedImage {
-            data: vec![0x89, 0x50, 0x4E],
-            format: "png".to_string(),
+            data: Bytes::from_static(&[0x89, 0x50, 0x4E]),
+            format: Cow::Borrowed("png"),
             image_index: 1,
             page_number: Some(1),
             width: Some(300),

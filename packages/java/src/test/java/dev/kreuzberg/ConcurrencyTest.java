@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.io.TempDir;
 class ConcurrencyTest {
 
 	@Test
+	@Timeout(60)
 	void testConcurrentExtractSameFile(@TempDir Path tempDir)
 			throws IOException, InterruptedException, ExecutionException {
 		Path testFile = tempDir.resolve("shared.txt");
@@ -50,7 +52,6 @@ class ConcurrencyTest {
 			assertEquals(10, results.size(), "All extraction tasks should complete");
 			for (ExtractionResult result : results) {
 				assertNotNull(result.getContent(), "Each extraction should produce content");
-				assertTrue(result.isSuccess(), "All extractions should succeed");
 			}
 		} finally {
 			executor.shutdown();
@@ -58,6 +59,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testConcurrentExtractDifferentFiles(@TempDir Path tempDir)
 			throws IOException, InterruptedException, ExecutionException {
 		List<Path> files = new ArrayList<>();
@@ -83,7 +85,6 @@ class ConcurrencyTest {
 			assertEquals(5, results.size(), "All files should be extracted");
 			for (ExtractionResult result : results) {
 				assertNotNull(result.getContent(), "Each file should be extracted");
-				assertTrue(result.isSuccess(), "All extractions should succeed");
 			}
 		} finally {
 			executor.shutdown();
@@ -91,6 +92,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testHighConcurrencyExtraction(@TempDir Path tempDir) throws IOException, InterruptedException {
 		Path testFile = tempDir.resolve("concurrent.txt");
 		Files.writeString(testFile, "Content for high concurrency test");
@@ -107,7 +109,7 @@ class ConcurrencyTest {
 			for (Future<ExtractionResult> future : futures) {
 				try {
 					ExtractionResult result = future.get();
-					if (result != null && result.isSuccess()) {
+					if (result != null && result.getContent() != null) {
 						successCount++;
 					}
 				} catch (Exception e) {
@@ -121,6 +123,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testAsyncExtractMultipleFiles(@TempDir Path tempDir) throws IOException, InterruptedException {
 		List<Path> files = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
@@ -149,6 +152,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testAsyncExtractWithConfiguration(@TempDir Path tempDir) throws IOException {
 		Path testFile = tempDir.resolve("async_config.txt");
 		Files.writeString(testFile, "Content with config");
@@ -167,6 +171,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testConcurrentByteExtraction() throws InterruptedException {
 		byte[] data = "Concurrent byte extraction test".getBytes();
 
@@ -182,7 +187,7 @@ class ConcurrencyTest {
 			for (Future<ExtractionResult> future : futures) {
 				try {
 					ExtractionResult result = future.get();
-					if (result != null && result.isSuccess()) {
+					if (result != null && result.getContent() != null) {
 						successCount++;
 					}
 				} catch (Exception e) {
@@ -196,6 +201,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testThreadSafetyWithSharedResult(@TempDir Path tempDir)
 			throws IOException, InterruptedException, KreuzbergException {
 		Path testFile = tempDir.resolve("thread_safe.txt");
@@ -228,6 +234,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testConcurrentMetadataAccess(@TempDir Path tempDir)
 			throws IOException, InterruptedException, KreuzbergException {
 		Path testFile = tempDir.resolve("metadata.txt");
@@ -260,6 +267,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testNoRaceConditionInMimeDetection() throws InterruptedException {
 		String path = "/test/file.txt";
 
@@ -270,7 +278,7 @@ class ConcurrencyTest {
 			for (int i = 0; i < 10; i++) {
 				futures.add(executor.submit(() -> {
 					try {
-						return Kreuzberg.detectMimeType(path, false);
+						return Kreuzberg.detectMimeType(path, true);
 					} catch (KreuzbergException e) {
 						return null;
 					}
@@ -289,6 +297,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testNoRaceConditionInPluginManagement() throws KreuzbergException, InterruptedException, ExecutionException {
 		ExecutorService executor = Executors.newFixedThreadPool(2);
 
@@ -336,6 +345,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testParallelBatchExtractions(@TempDir Path tempDir) throws IOException, InterruptedException {
 		List<Path> files = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
@@ -375,6 +385,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testStressConcurrentExtractions(@TempDir Path tempDir) throws IOException, InterruptedException {
 		Path testFile = tempDir.resolve("stress.txt");
 		StringBuilder content = new StringBuilder();
@@ -393,7 +404,7 @@ class ConcurrencyTest {
 				futures.add(executor.submit(() -> {
 					try {
 						ExtractionResult result = Kreuzberg.extractFile(testFile);
-						if (result != null && result.isSuccess()) {
+						if (result != null && result.getContent() != null) {
 							successCount.incrementAndGet();
 						}
 						return result;
@@ -422,6 +433,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testSynchronizedConcurrentExecution(@TempDir Path tempDir) throws IOException, InterruptedException {
 		Path testFile = tempDir.resolve("synced.txt");
 		Files.writeString(testFile, "Synchronized execution test");
@@ -460,6 +472,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testConfigBuilderThreadSafety() throws InterruptedException, ExecutionException {
 		ExecutorService executor = Executors.newFixedThreadPool(4);
 		List<Future<ExtractionConfig>> futures = new ArrayList<>();
@@ -480,6 +493,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testCancellableAsyncExtraction(@TempDir Path tempDir) throws IOException {
 		Path testFile = tempDir.resolve("cancellable.txt");
 		Files.writeString(testFile, "Cancellable extraction test");
@@ -500,6 +514,7 @@ class ConcurrencyTest {
 	}
 
 	@Test
+	@Timeout(60)
 	void testSequentialVsConcurrentResults(@TempDir Path tempDir)
 			throws IOException, InterruptedException, ExecutionException, KreuzbergException {
 		Path testFile = tempDir.resolve("equivalence.txt");
@@ -519,7 +534,8 @@ class ConcurrencyTest {
 				ExtractionResult concurrent = future.get();
 
 				assertEquals(sequential.getMimeType(), concurrent.getMimeType(), "MIME types should be identical");
-				assertTrue(sequential.isSuccess() == concurrent.isSuccess(), "Success status should match");
+				assertEquals(sequential.getContent() != null, concurrent.getContent() != null,
+						"Content availability should match");
 			}
 		} finally {
 			executor.shutdown();

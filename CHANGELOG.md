@@ -7,6 +7,234 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+#### Java Bindings
+- **Format-specific metadata missing in `getMetadataMap()`**: Fixed `sheet_count`, `sheet_names`, and other format-specific metadata fields not being accessible via `ExtractionResult.getMetadataMap()`. The `ResultParser.buildMetadata()` method now properly propagates flattened format metadata (e.g., Excel, PPTX) to the `Metadata.additional` map.
+
+---
+
+## [4.2.9] - 2026-02-03
+
+### Fixed
+
+#### MCP Server
+- **Nested runtime panic in Docker/MCP context**: Fixed "Cannot start a runtime from within a runtime" panic when using `extract_file` tool via MCP server in Docker. The MCP extraction tools were calling sync wrappers which use `GLOBAL_RUNTIME.block_on()` from within the already-running Tokio runtime. Now always uses async extraction in MCP context. (#348)
+- **Removed unused `async` parameter from MCP tools**: The `async` parameter on `extract_file`, `extract_bytes`, and `batch_extract_files` MCP tools has been removed since MCP always runs in an async context.
+
+#### Python Bindings
+- **Windows CLI binary not found**: Fixed "embedded binary not found" error on Windows. The build script now correctly handles Windows `.exe` extension when copying the CLI binary into the wheel. (#349)
+
+#### OCR Heuristic
+- **Pass actual page count to OCR fallback evaluator**: `evaluate_native_text_for_ocr` was called with `None` for page count, defaulting to 1. This inflated per-page averages for multi-page documents, causing scanned PDFs to skip OCR.
+- **Per-page OCR evaluation for mixed-content PDFs**: Added `evaluate_per_page_ocr` which evaluates each page independently using page boundaries. If any single page triggers OCR fallback, the entire document is OCR'd. Previously, good pages masked scanned pages in the aggregate evaluation.
+
+---
+
+## [4.2.8] - 2026-02-02
+
+### Fixed
+
+#### Python Bindings
+- **ChunkingConfig serde serialization**: Fixed `config_to_json()` and `config_get_field()` outputting `max_characters`/`overlap` instead of `max_chars`/`max_overlap` by using `serde(rename)` instead of `alias` for backwards-compatible serialization
+
+#### Java Bindings
+- **ARM64 SIGBUS crash in `kreuzberg_get_error_details`**: Added `kreuzberg_get_error_details_ptr()` returning a heap-allocated pointer instead of struct-by-value, fixing ABI mismatch in Java Panama FFI on ARM64 architectures
+- **E2E test compilation errors**: Updated `E2EHelpers` to use `getMetadataMap()` and `getElementType().name()` matching current API
+
+#### Ruby Bindings
+- **`rb_sys` build dependency**: Moved `rb_sys` from development to runtime dependency in gemspec so bundler installs it before compiling the native extension, fixing `LoadError: cannot load such file -- rb_sys/mkmf` for end users
+- **Flaky concurrent extraction test**: Prevented `Tempfile` garbage collection in thread safety test by keeping references alive during concurrent extraction
+
+#### FFI
+- **Added `kreuzberg_free_error_details()`**: New function to properly free heap-allocated `CErrorDetails` structs and their internal string fields
+
+### Changed
+
+#### CI
+- **Rust test parallelization**: Removed `--test-threads=1` from unit test script, enabling parallel test execution across 80+ test files
+- **Rust CI timeout**: Reduced job timeout from 180 to 60 minutes
+
+---
+
+## [4.2.7] - 2026-02-01
+
+### Added
+
+#### API
+- **OpenAPI schema for `/extract` endpoint**: Implemented `utoipa::ToSchema` on all extraction result types (`ExtractionResult`, `Metadata`, `Chunk`, `ExtractedImage`, `Element`, `DjotContent`, `PageContent`, `Table`, and all nested types), enabling full OpenAPI documentation for the extraction endpoint
+- **Unified `ChunkingConfig`**: Merged internal chunking config into a single `ChunkingConfig` struct with canonical field names (`max_characters`, `overlap`) and serde aliases (`max_chars`, `max_overlap`) for backwards compatibility. Added `trim` and `chunker_type` fields. `ChunkerType` enum is no longer feature-gated behind `chunking`
+
+#### OCR
+- **`KREUZBERG_OCR_LANGUAGE="all"` support**: Setting the language to `"all"` or `"*"` automatically detects and uses all installed Tesseract languages from the tessdata directory, eliminating manual enumeration (#344)
+
+### Fixed
+
+#### Ruby Bindings
+- **Cow<'static, str> type conversions**: Fixed Magnus bindings to properly convert `Cow<'static, str>` fields (`mime_type`, `format`, `colorspace`) using `.as_ref()` instead of passing directly to FFI methods
+- **Vendor workspace `bytes` dependency**: Added `bytes` to the Ruby vendor workspace Cargo.toml via the vendoring script, fixing workspace dependency resolution failures
+- **Tempfile GC in batch test**: Kept `Tempfile` references alive in `batch_operations_spec.rb` to prevent garbage collection before `batch_extract_files_sync` reads them
+
+#### Python Bindings
+- **Runtime `ExtractedImage` import**: Defined `ExtractedImage`, `Metadata`, `OutputFormat`, and `ResultFormat` as Python-level runtime types instead of importing from compiled Rust bindings (these are stub-only types, not `#[pyclass]` exports)
+
+#### C# Bindings
+- **Attributes deserialization on ARM64**: Added `AttributesDictionaryConverter` to handle both array-of-arrays (`[["k","v"]]`) and object (`{"k":"v"}`) JSON formats for `LinkMetadata.Attributes` and `HtmlImageMetadata.Attributes`
+
+#### Java Bindings
+- **Test timeout prevention**: Added `@Timeout(60)` to all concurrency and async test methods in `ConcurrencyTest` and `AsyncExtractionTest` to prevent CI hangs
+- **Surefire timeout reduction**: Reduced `forkedProcessTimeoutInSeconds` from 3600s to 600s for faster failure detection
+
+### Performance
+
+- **Cow<'static, str> for static string fields**: Converted `ExtractionResult.mime_type`, `ExtractedImage.format`, `ExtractedImage.colorspace`, `HierarchicalBlock.level`, `ArchiveMetadata.format`, `LibreOfficeConversionResult` fields, and `StructuredDataResult.format` from `String` to `Cow<'static, str>`, eliminating heap allocations for values that are always string literals
+- **RST parser allocation reduction**: Replaced `Vec<char>` collects with direct iterator usage, `to_lowercase()` with `eq_ignore_ascii_case()`, and removed intermediate `collect()` before `extend()`
+- **Idiomatic Cow usage in fictionbook extractor**: Replaced 16 instances of `from_utf8_lossy().to_string()` with `.into_owned()`
+- **Reduced unnecessary clones in email extractor**: Replaced `Option::clone().or_else(|| .clone())` with `as_ref().or().cloned()`
+- **Vec for small metadata maps**: Replaced `HashMap<String, String>` with `Vec<(String, String)>` for `LinkMetadata.attributes` and `ImageMetadataType.attributes` (typically <10 entries, faster iteration and lower overhead)
+- **Cow key interning for metadata**: Switched `Metadata.additional` from `HashMap<String, Value>` to `AHashMap<Cow<'static, str>, Value>`, avoiding allocation for static keys
+- **bytes::Bytes for binary data**: Replaced `Vec<u8>` with `bytes::Bytes` for `ExtractedImage.data`, enabling zero-copy cloning of large image buffers
+- **AHashMap for hot-path maps**: Replaced `HashMap` with `AHashMap` in metadata and extraction pipelines for faster hashing
+- **Reduced clone elimination**: Removed unnecessary `.clone()` calls in Cow return paths across extraction pipeline
+
+### Fixed
+
+#### Elixir Bindings
+- **Overhauled all struct types from audit against Rust source**: Exhaustive audit of every Elixir struct against the Rust core types to ensure field-level correctness
+  - `Metadata`: Replaced phantom fields (`author`, `page_count`, `created_date`, `creator`, `producer`, `trapped`, `file_size`, `version`, `encryption`) with correct Rust fields (`authors`, `pages`, `created_at`, `modified_at`, `created_by`, `modified_by`, `format`, `image_preprocessing`, `error`, `additional`); handles `#[serde(flatten)]` for `format` and `additional`
+  - `Table`: Stripped to Rust's 3 fields (`cells`, `markdown`, `page_number`); removed phantom `rows`, `columns`, `headers`, `html`, `bounds`
+  - `Image`: Replaced phantom fields (`mime_type`, `ocr_text`, `file_size`, `dpi`) with Rust `ExtractedImage` fields (`image_index`, `colorspace`, `bits_per_component`, `is_mask`, `description`, `ocr_result`); `ocr_result` recursively converts to `ExtractionResult` struct; handles `bytes::Bytes` u8 array → binary conversion
+  - `Chunk`: Removed phantom `token_count`, `start_position`, `confidence`; `metadata` now typed as `ChunkMetadata` struct
+  - `Page`: Renamed `number` → `page_number`; removed phantom `width`, `height`, `index`; added typed `hierarchy` field
+  - `ExtractionResult`: Added `to_map/1` with recursive serialization; added `elements` and `djot_content` fields; removed nonexistent `keywords` field
+- **Added new struct modules matching Rust types**:
+  - `ChunkMetadata` — byte_start, byte_end, token_count, chunk_index, total_chunks, first_page, last_page
+  - `Keyword` — text, score, algorithm, positions
+  - `PageHierarchy` + `HierarchicalBlock` — page hierarchy with heading-level blocks and bounding boxes
+  - `DjotContent`, `DjotFormattedBlock`, `DjotInlineElement`, `DjotAttributes`, `DjotImage`, `DjotLink`, `DjotFootnote` — full Djot document structure (8 modules)
+  - `PageStructure`, `PageBoundary`, `PageInfo` — page structure metadata
+  - `ErrorMetadata` — error_type, message
+  - `ImagePreprocessingMetadata` — 12 fields matching Rust (original_dimensions, target_dpi, scale_factor, etc.)
+- **Fixed all test files**: Updated 11 test files to match new struct field names (55 failures → 0)
+
+#### TypeScript Bindings
+- **Overhauled type definitions from audit against NAPI-RS Rust source**:
+  - Added proper `EmbeddingConfig` and `EmbeddingModelType` interfaces (replacing opaque `Record<string, unknown>`)
+  - Replaced deprecated `chunkSize`/`chunkOverlap` with `maxChars`/`maxOverlap` in `ChunkingConfig`
+  - Replaced phantom `FontConfig` with correct `HierarchyConfig` (kClusters, includeBbox, ocrCoverageThreshold)
+  - Removed phantom fields from `ExtractionResult` (embeddings, processingTime, outputFormat, resultFormat)
+  - Removed phantom fields from `ExtractionConfig` (quality, verbose, debug, timeout, retries)
+  - Fixed `FormattedBlock.children` from nullable to required array
+  - Fixed validation utilities to match actual config structure
+
+#### PHP Bindings
+- **Overhauled type definitions from audit against ext-php-rs Rust source**:
+  - `Keyword`: Added missing `algorithm` and `positions` fields
+  - `Metadata`: Removed phantom `producer`/`date` fields; added missing `modifiedBy`, `sheetCount`, `format`; fixed `pageCount` key mismatch (Rust sends camelCase)
+  - `ExtractionResult`: Removed phantom `embeddings`/`tesseract` fields not in Rust struct
+  - `FormattedBlock`: Changed `children` from nullable to required array (matches Rust `Vec`)
+  - Fixed mock data to match corrected types
+
+#### Ruby Bindings
+- **Overhauled RBS type stubs** (`sig/kreuzberg.rbs`): Exhaustive audit against Ruby source and Rust Magnus bindings to ensure all types match exactly
+  - Added missing `Config::Hierarchy` class and `PDF.hierarchy` attribute
+  - Added missing `Config::KeywordYakeParams`, `Config::KeywordRakeParams` classes
+  - Added `Tesseract.options` and `HtmlOptions.options` attr_readers
+  - Added `Keywords` attr_readers and fixed parameter types to accept `String | Symbol`
+  - Fixed `Config::Extraction` to use `images` attr with `image_extraction` alias (matching Ruby source)
+  - Added missing `Extraction` methods: `discover`, `merge`, `merge!`, `[]`, `[]=`, `get_field`, `to_json`, format setters
+  - Added missing `Result` inner classes: `PageContent`, `HierarchicalBlock`, `PageHierarchy`, `ElementBoundingBox`, `ElementMetadataStruct`, `ElementStruct`
+  - Added `Result` attributes `pages` and `elements`, plus helper methods `page_count`, `chunk_count`, `detected_language`, `metadata_field`
+  - Added `DjotContent.metadata` lazy method declaration
+  - Added `extraction_result_hash.metadata` and `extraction_result_hash.pages` fields; added `page_content_hash` type
+  - Fixed `chunk_hash.chunk_index`/`total_chunks` from optional to required
+  - Fixed `image_hash.is_mask` from optional to required
+  - Fixed `register_ocr_backend` signature to include `name` parameter
+  - Replaced `_OcrBackend.extract_text` with `process_image` (matching actual protocol)
+  - Fixed `_classify_error_native` and `_get_error_details_native` return types to `Hash`
+  - Fixed `validate_mime_type` return type to `String`, `get_extensions_for_mime` to `Array[String]`
+  - Fixed extraction API methods to use keyword arguments (`path:`, `data:`, etc.)
+  - Added 30+ missing native method declarations (validation, config, MIME, result wrappers, plugin management)
+  - All private parsing/serialization methods now declared
+  - Steep type checker passes with zero errors
+
+#### Python Bindings
+- **Overhauled `_internal_bindings.pyi` type stubs**: Exhaustive audit against Rust source to ensure all types, fields, and optionality match exactly
+  - Changed `Chunk` from `TypedDict` to proper class (matches PyO3 `#[pyclass]`)
+  - Replaced bare `dict[str, Any]` with precise TypedDicts: `ChunkMetadata`, `ErrorDetails`, `HtmlConversionOptions`, `HtmlPreprocessingOptions`, `Attributes`, `HeaderMetadata`, `LinkMetadata`, `HtmlImageMetadata`, `StructuredData`, `PageBoundary`, `PageInfo`, `PageStructure`
+  - Fixed `PptxMetadata` fields (was title/author/description, now slide_count/slide_names)
+  - Fixed `PdfMetadata` fields (removed common Metadata fields that don't belong)
+  - Fixed `HtmlMetadata` structure (individual og_*/twitter_* fields → open_graph/twitter_card/meta_tags dicts)
+  - Fixed optionality on PDF, Email, Archive, HTML, and OCR metadata fields
+  - Added missing `metadata` field on `InlineElement`
+  - Added missing `output_format`/`result_format` on `ExtractionResult`
+  - Added missing `language` field in OCR metadata
+  - Removed orphaned `PageHierarchy`/`HierarchicalBlock` types and `PageContent.hierarchy` (never set in Python conversion)
+- **Removed duplicate `types.py`**: Deleted `kreuzberg/types.py` which contained 43 duplicate type definitions conflicting with `_internal_bindings.pyi`
+- **Consolidated duplicate test files**: Merged unique tests from `test_embeddings_advanced.py`, `test_images_extraction.py`, `test_tables_extraction.py` into their canonical counterparts and deleted the duplicates
+
+#### Java Bindings
+- **Overhauled type definitions from audit against Rust source**: Exhaustive audit of every Java type against the Rust core to ensure field-level correctness
+  - `Metadata`: Removed phantom `date`/`formatType` fields; added `createdBy`, `modifiedBy`; removed `Success` from `ExtractionResult`
+  - `PptxMetadata`: Added `slideCount`, `slideWidth`, `slideHeight`; removed phantom `template`
+  - `PageInfo`: Changed `dimensions` from `Map<String, Double>` to `double[]` (matches Rust tuple serialization)
+  - `ImageMetadata`: Fixed `exif` to non-optional `Map<String, String>` (matches Rust `HashMap`)
+  - `LinkMetadata`/`ImageMetadataType`: Fixed `attributes` from `Map` to `List<List<String>>` (matches Rust `Vec<(String, String)>` serialization)
+  - Added missing enums: `OutputFormat`, `ElementType`, `PageUnitType`, `LinkType`, `ImageType`, `StructuredDataType`, `TextDirection`, `EmbeddingPreset`
+  - Added missing types: `DjotContent`, `FormattedBlock`, `InlineElement`, `DjotAttributes`, `DjotImage`, `DjotLink`, `Footnote`, `PageHierarchy`, `HierarchicalBlock`
+  - Updated all test files to match corrected types
+
+#### C# Bindings
+- **Overhauled type definitions from audit against Rust source**: Exhaustive audit of every C# type against the Rust core to ensure field-level correctness
+  - `Metadata`: Removed phantom `Success`/`Date` fields; added `CreatedBy`, `ModifiedBy`; restructured `FormatMetadata` as discriminated union
+  - `PptxMetadata`: Added `SlideCount`, `SlideWidth`, `SlideHeight`
+  - `PageBoundary`: Changed `ByteStart`/`ByteEnd` from `int` to `long` (matches Rust `usize` on 64-bit)
+  - `ImageMetadata`: Fixed `Exif` to non-nullable (matches Rust `HashMap`)
+  - Added missing types: `DjotContent`, `FormattedBlock`, `InlineElement`, `DjotAttributes`, `DjotImage`, `DjotLink`, `Footnote`, `PageHierarchy`, `HierarchicalBlock`
+  - Registered all new types in `JsonSerializerContext` for source-generated serialization
+  - Removed stale `Success`/`Date` references from `KreuzbergClient`
+- **Fixed keyword deserialization**: Properly discriminate between simple string keywords (document metadata) and extracted keyword objects (YAKE/RAKE with text/score/algorithm); added `ExtractedKeywords` property to `Metadata`
+- **Updated all test files**: Removed references to removed properties, fixed `BinarizationMode` → `BinarizationMethod`
+
+#### Go Bindings
+- **Overhauled type definitions from audit against Rust source**: Exhaustive audit of every Go type against the Rust core to ensure field-level correctness
+  - `Metadata`: Removed phantom `Date`/`FormatType` fields; added `CreatedBy`, `ModifiedBy`
+  - `PptxMetadata`: Added `SlideCount`, `SlideWidth`, `SlideHeight`; removed phantom `Template`
+  - `ImageMetadata`: Fixed `Exif` to non-pointer (matches non-optional Rust `HashMap`)
+  - `PageBoundary`: Changed `ByteStart`/`ByteEnd` from `int` to `int64` (matches Rust `usize`)
+  - `PageInfo`: Changed `Dimensions` from struct to `[]float64` (matches Rust tuple serialization)
+  - Added missing enums and types matching Rust core
+  - Updated all test files to match corrected types
+- **Consolidated config tests**: Renamed `config_comprehensive_test.go` → `config_test.go` and removed 5 duplicate FontConfig tests that overlapped with `font_config_test.go`
+
+### Changed
+
+- **Dependency update**: Bumped `html-to-markdown-rs` from 2.24.1 to 2.24.3
+
+---
+
+## [4.2.6] - 2026-01-31
+
+### Fixed
+
+#### Python Bindings
+- **Missing `output_format`/`result_format` on `ExtractionResult`**: Added `output_format` and `result_format` fields to the Python `ExtractionResult`, echoing the config values back on the result object
+- **Missing `elements` field on `ExtractionResult`**: Added conversion of Rust `Vec<Element>` to Python list, enabling element-based result format
+- **Missing `djot_content` field on `ExtractionResult`**: Added conversion of Rust `DjotContent` to Python via JSON serialization
+- **Chunks returned as dicts instead of objects**: Created proper `PyChunk` pyclass with attribute access (`chunk.content`), fixing `getattr` failures in e2e tests
+
+#### Benchmark Harness
+- **Unified output format**: Merged `consolidated.json` and `aggregated.json` into single `results.json` with schema v2.0.0
+- **Quality scoring**: Added F1 token-based quality scoring module with ground truth support and `extracted_text` capture from all adapters
+- **OCR coverage**: Added docling, unstructured, tika, mineru as OCR-capable frameworks
+- **Naming normalization**: Strip `-sync`/`-async` suffixes, normalize `kreuzberg-native` to `kreuzberg-rust`
+- **Safety fixes**: Eliminated unsafe `set_var` for OCR config, added NaN/Infinity sanitization, bounds checks in percentile calculations, framework name input validation, subprocess output contract validation
+- **Zero-duration throughput**: Fixed artificial throughput inflation when batch duration is zero
+
+---
+
 ## [4.2.5] - 2026-01-30
 
 ### Fixed

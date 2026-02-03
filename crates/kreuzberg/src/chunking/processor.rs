@@ -54,14 +54,7 @@ impl PostProcessor for ChunkingProcessor {
             None => return Ok(()),
         };
 
-        let chunk_config = crate::chunking::ChunkingConfig {
-            max_characters: chunking_config.max_chars,
-            overlap: chunking_config.max_overlap,
-            trim: true,
-            chunker_type: crate::chunking::ChunkerType::Text,
-        };
-
-        let chunking_result = crate::chunking::chunk_text(&result.content, &chunk_config, None)
+        let chunking_result = crate::chunking::chunk_text(&result.content, chunking_config, None)
             .map_err(|e| KreuzbergError::Other(format!("Chunking failed: {}", e)))?;
         result.chunks = Some(chunking_result.chunks);
 
@@ -87,14 +80,17 @@ mod tests {
     use super::*;
     use crate::core::config::ChunkingConfig;
     use crate::types::Metadata;
+    use std::borrow::Cow;
 
     #[tokio::test]
     async fn test_chunking_processor() {
         let processor = ChunkingProcessor;
         let config = ExtractionConfig {
             chunking: Some(ChunkingConfig {
-                max_chars: 100,
-                max_overlap: 10,
+                max_characters: 100,
+                overlap: 10,
+                trim: true,
+                chunker_type: crate::chunking::ChunkerType::Text,
                 embedding: None,
                 preset: None,
             }),
@@ -103,7 +99,7 @@ mod tests {
 
         let mut result = ExtractionResult {
 	            content: "This is a longer text that should be split into multiple chunks to test the chunking processor functionality.".to_string(),
-	            mime_type: "text/plain".to_string(),
+	            mime_type: Cow::Borrowed("text/plain"),
 	            metadata: Metadata::default(),
 	            tables: vec![],
 	            detected_languages: None,
@@ -128,7 +124,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Some text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -165,7 +161,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "Sample text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -178,8 +174,10 @@ mod tests {
 
         let config_with_chunking = ExtractionConfig {
             chunking: Some(crate::core::config::ChunkingConfig {
-                max_chars: 100,
-                max_overlap: 10,
+                max_characters: 100,
+                overlap: 10,
+                trim: true,
+                chunker_type: crate::chunking::ChunkerType::Text,
                 embedding: None,
                 preset: None,
             }),
@@ -197,7 +195,7 @@ mod tests {
 
         let short_result = ExtractionResult {
             content: "Short".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -210,7 +208,7 @@ mod tests {
 
         let long_result = ExtractionResult {
             content: "a".repeat(100000),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,

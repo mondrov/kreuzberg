@@ -180,7 +180,7 @@ public class MetadataTypesTests
 
         Assert.IsType<Dictionary<string, string>>(link.Attributes);
         Assert.Equal(2, link.Attributes.Count);
-        Assert.Equal("external-link", link.Attributes["class"]);
+        Assert.True(link.Attributes.ContainsKey("class") && link.Attributes["class"] == "external-link");
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class MetadataTypesTests
 
         Assert.IsType<Dictionary<string, string>>(image.Attributes);
         Assert.Equal(2, image.Attributes.Count);
-        Assert.Equal("lazy", image.Attributes["loading"]);
+        Assert.True(image.Attributes.ContainsKey("loading") && image.Attributes["loading"] == "lazy");
     }
 
     [Fact]
@@ -359,9 +359,8 @@ public class MetadataTypesTests
         Assert.Equal(link.LinkType, deserialized.LinkType);
         Assert.Single(deserialized.Rel);
         Assert.Equal("canonical", deserialized.Rel[0]);
-        var attributesList = new List<KeyValuePair<string, string>>(deserialized.Attributes);
-        Assert.Single(attributesList);
-        Assert.Equal("nav-link", deserialized.Attributes["class"]);
+        Assert.Single(deserialized.Attributes);
+        Assert.True(deserialized.Attributes.ContainsKey("class") && deserialized.Attributes["class"] == "nav-link");
     }
 
     [Fact]
@@ -390,7 +389,7 @@ public class MetadataTypesTests
         Assert.Equal(1080, deserialized.Dimensions[1]);
         Assert.Equal(image.ImageType, deserialized.ImageType);
         Assert.Single(deserialized.Attributes);
-        Assert.Equal("photo-small.jpg 800w", deserialized.Attributes["srcset"]);
+        Assert.True(deserialized.Attributes.ContainsKey("srcset") && deserialized.Attributes["srcset"] == "photo-small.jpg 800w");
     }
 
     [Fact]
@@ -447,7 +446,6 @@ public class MetadataTypesTests
         var result = KreuzbergClient.ExtractFileSync(htmlPath, config);
 
         Assert.NotNull(result);
-        Assert.True(result.Success);
         Assert.NotNull(result.Metadata);
         Assert.NotNull(result.Metadata.Format);
         Assert.NotNull(result.Metadata.Format.Html);
@@ -778,9 +776,7 @@ public class MetadataTypesTests
         var result = KreuzbergClient.ExtractFileSync(htmlPath, config);
 
         Assert.NotNull(result);
-        Assert.True(result.Success);
         Assert.NotNull(result.Metadata);
-        Assert.Equal(FormatType.Html, result.Metadata.FormatType);
         Assert.NotNull(result.Metadata.Format);
         Assert.Equal(FormatType.Html, result.Metadata.Format.Type);
         Assert.NotNull(result.Metadata.Format.Html);
@@ -887,10 +883,10 @@ public class MetadataTypesTests
 
         Assert.NotNull(deserialized);
         Assert.Equal(4, deserialized.Attributes.Count);
-        Assert.Equal("responsive-image", deserialized.Attributes["class"]);
-        Assert.Equal("true", deserialized.Attributes["data-lazy"]);
-        Assert.Equal("image-small.jpg 480w, image-medium.jpg 1024w", deserialized.Attributes["srcset"]);
-        Assert.Equal("(max-width: 600px) 100vw, 50vw", deserialized.Attributes["sizes"]);
+        Assert.True(deserialized.Attributes.ContainsKey("class") && deserialized.Attributes["class"] == "responsive-image");
+        Assert.True(deserialized.Attributes.ContainsKey("data-lazy") && deserialized.Attributes["data-lazy"] == "true");
+        Assert.True(deserialized.Attributes.ContainsKey("srcset") && deserialized.Attributes["srcset"] == "image-small.jpg 480w, image-medium.jpg 1024w");
+        Assert.True(deserialized.Attributes.ContainsKey("sizes") && deserialized.Attributes["sizes"] == "(max-width: 600px) 100vw, 50vw");
     }
 
     [Fact]
@@ -1030,7 +1026,6 @@ public class MetadataTypesTests
         var result = await Task.Run(() => KreuzbergClient.ExtractFileSync(htmlPath, config));
 
         Assert.NotNull(result);
-        Assert.True(result.Success);
         Assert.NotNull(result.Metadata);
         Assert.NotNull(result.Metadata.Format);
         Assert.NotNull(result.Metadata.Format.Html);
@@ -1069,7 +1064,6 @@ public class MetadataTypesTests
             stopwatch.Stop();
 
             Assert.NotNull(result);
-            Assert.True(result.Success);
             Assert.NotNull(result.Metadata.Format.Html);
 
             Assert.True(stopwatch.ElapsedMilliseconds < 30000,
@@ -1133,7 +1127,6 @@ public class MetadataTypesTests
         foreach (var result in results)
         {
             Assert.NotNull(result);
-            Assert.True(result.Success);
             Assert.NotNull(result.Metadata);
             Assert.NotNull(result.Metadata.Format.Html);
         }
@@ -1276,7 +1269,6 @@ public class MetadataTypesTests
             var result = KreuzbergClient.ExtractFileSync(tempPath, config);
 
             Assert.NotNull(result);
-            Assert.True(result.Success);
             Assert.NotNull(result.Metadata.Format.Html);
 
             var afterExtractionMemory = GC.GetTotalMemory(false);

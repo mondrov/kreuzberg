@@ -8,7 +8,9 @@ use crate::extraction::archive::{
 };
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::{ArchiveMetadata, ExtractionResult, Metadata};
+use ahash::AHashMap;
 use async_trait::async_trait;
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 /// Build an ExtractionResult from archive metadata and text contents.
@@ -18,7 +20,7 @@ use std::collections::HashMap;
 fn build_archive_result(
     extraction_metadata: ExtractedMetadata,
     text_contents: HashMap<String, String>,
-    format_name: &str,
+    format_name: &'static str,
     mime_type: &str,
 ) -> ExtractionResult {
     let file_names: Vec<String> = extraction_metadata
@@ -28,14 +30,14 @@ fn build_archive_result(
         .collect();
 
     let archive_metadata = ArchiveMetadata {
-        format: format_name.to_string(),
+        format: Cow::Borrowed(format_name),
         file_count: extraction_metadata.file_count,
         file_list: file_names,
         total_size: extraction_metadata.total_size as usize,
         compressed_size: None,
     };
 
-    let mut additional = HashMap::new();
+    let mut additional = AHashMap::new();
     let file_details: Vec<serde_json::Value> = extraction_metadata
         .file_list
         .iter()
@@ -47,7 +49,7 @@ fn build_archive_result(
             })
         })
         .collect();
-    additional.insert("files".to_string(), serde_json::json!(file_details));
+    additional.insert(Cow::Borrowed("files"), serde_json::json!(file_details));
 
     let mut output = format!(
         "{} Archive ({} files, {} bytes)\n\n",
@@ -67,7 +69,7 @@ fn build_archive_result(
 
     ExtractionResult {
         content: output,
-        mime_type: mime_type.to_string(),
+        mime_type: mime_type.to_string().into(),
         metadata: Metadata {
             format: Some(crate::types::FormatMetadata::Archive(archive_metadata)),
             additional,

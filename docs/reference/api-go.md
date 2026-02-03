@@ -43,7 +43,7 @@ When building outside the monorepo, provide the static library via `CGO_LDFLAGS`
 
 ```bash title="Terminal"
 # Option 1: Download pre-built from GitHub Releases
-curl -LO https://github.com/kreuzberg-dev/kreuzberg/releases/download/v4.2.5/go-ffi-linux-x86_64.tar.gz
+curl -LO https://github.com/kreuzberg-dev/kreuzberg/releases/download/v4.2.9/go-ffi-linux-x86_64.tar.gz
 tar -xzf go-ffi-linux-x86_64.tar.gz
 mkdir -p ~/kreuzberg/lib
 cp kreuzberg-ffi/lib/libkreuzberg_ffi.a ~/kreuzberg/lib/
@@ -462,7 +462,7 @@ func LibraryVersion() string
 
 **Returns:**
 
-- `string`: Version string (e.g., "4.2.5")
+- `string`: Version string (e.g., "4.2.9")
 
 **Example:**
 
@@ -586,15 +586,16 @@ Configure text chunking for RAG and retrieval workloads.
 
 ```go title="Go"
 type ChunkingConfig struct {
-	MaxChars     *int             // Maximum characters per chunk
-	MaxOverlap   *int             // Overlap between chunks
-	ChunkSize    *int             // Alias for MaxChars
-	ChunkOverlap *int             // Alias for MaxOverlap
-	Preset       *string          // Preset: "semantic", "sliding", "recursive"
-	Embedding    *EmbeddingConfig // Embedding generation
-	Enabled      *bool            // Enable chunking
+	MaxChars     *int    // Maximum characters per chunk
+	MaxOverlap   *int    // Overlap between chunks in characters
+	ChunkSize    *int    // Deprecated: use MaxChars instead
+	ChunkOverlap *int    // Deprecated: use MaxOverlap instead
+	Preset       *string // Chunking preset name
+	Enabled      *bool   // Enable chunking (default: true)
 }
 ```
+
+**Note:** The Go binding maintains both `MaxChars`/`MaxOverlap` (recommended) and `ChunkSize`/`ChunkOverlap` (deprecated) for backward compatibility. New code should use `MaxChars` and `MaxOverlap`.
 
 ---
 

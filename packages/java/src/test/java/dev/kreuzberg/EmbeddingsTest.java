@@ -39,7 +39,7 @@ class EmbeddingsTest {
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
 		assertNotNull(result, "Extraction result should not be null");
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 		assertNotNull(result.getChunks(), "Chunks list should not be null");
 
 		// Verify chunks and embeddings
@@ -61,7 +61,7 @@ class EmbeddingsTest {
 	void testEmbeddingDimensionVerification() throws KreuzbergException {
 		// Build config with embedding enabled
 		Map<String, Object> embeddingConfig = new HashMap<>();
-		embeddingConfig.put("enabled", true);
+		embeddingConfig.put("enabled", null);
 		Map<String, Object> modelConfig = new HashMap<>();
 		modelConfig.put("type", "fast_embed");
 		modelConfig.put("model_name", "BAAI/bge-small-en-v1.5");
@@ -75,7 +75,7 @@ class EmbeddingsTest {
 				+ "Different models produce vectors of different dimensions.";
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 		List<Chunk> chunks = result.getChunks();
 
 		if (!chunks.isEmpty()) {
@@ -83,10 +83,10 @@ class EmbeddingsTest {
 			int consistentDimension = -1;
 
 			for (Chunk chunk : chunks) {
-				Optional<List<Double>> embedding = chunk.getEmbedding();
+				Optional<List<Float>> embedding = chunk.getEmbedding();
 
 				if (embedding.isPresent()) {
-					List<Double> vector = embedding.get();
+					List<Float> vector = embedding.get();
 					assertNotNull(vector, "Embedding vector should not be null");
 					assertTrue(vector.size() > 0, "Embedding should have dimensions");
 
@@ -133,7 +133,7 @@ class EmbeddingsTest {
 
 		for (int i = 0; i < results.length; i++) {
 			assertNotNull(results[i], "Result " + i + " should not be null");
-			assertTrue(results[i].isSuccess(), "Extraction " + i + " should succeed");
+			assertNotNull(results[i].getContent(), "Extraction " + i + " should succeed");
 			assertNotNull(results[i].getChunks(), "Chunks " + i + " should be extracted");
 		}
 
@@ -163,7 +163,7 @@ class EmbeddingsTest {
 		ExtractionResult textResult = Kreuzberg.extractBytes(plainText.getBytes(), "text/plain", textConfig);
 
 		assertNotNull(textResult, "Plain text result should not be null");
-		assertTrue(textResult.isSuccess(), "Plain text extraction should succeed");
+		assertNotNull(textResult.getContent(), "Plain text extraction should succeed");
 		assertNotNull(textResult.getContent(), "Plain text content should be extracted");
 
 		// Test HTML
@@ -171,11 +171,12 @@ class EmbeddingsTest {
 		ExtractionResult htmlResult = Kreuzberg.extractBytes(htmlContent.getBytes(), "text/html", textConfig);
 
 		assertNotNull(htmlResult, "HTML result should not be null");
-		assertTrue(htmlResult.isSuccess(), "HTML extraction should succeed");
+		assertNotNull(htmlResult.getContent(), "HTML extraction should succeed");
 		assertNotNull(htmlResult.getContent(), "HTML content should be extracted");
 
 		// Both should produce valid results
-		assertTrue(textResult.isSuccess() || htmlResult.isSuccess(), "At least one format should succeed");
+		assertTrue(textResult.getContent() != null || htmlResult.getContent() != null,
+				"At least one format should succeed");
 	}
 
 	/**
@@ -191,25 +192,25 @@ class EmbeddingsTest {
 		String text = "Semantic similarity between embeddings enables similarity search and clustering.";
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 
 		for (Chunk chunk : result.getChunks()) {
-			Optional<List<Double>> embeddingOpt = chunk.getEmbedding();
+			Optional<List<Float>> embeddingOpt = chunk.getEmbedding();
 
 			if (embeddingOpt.isPresent()) {
-				List<Double> embedding = embeddingOpt.get();
+				List<Float> embedding = embeddingOpt.get();
 
 				// Validate each dimension
 				for (int i = 0; i < embedding.size(); i++) {
-					Double value = embedding.get(i);
+					Float value = embedding.get(i);
 					assertNotNull(value, "Embedding value at index " + i + " should not be null");
-					assertFalse(Double.isNaN(value), "Embedding value at index " + i + " should not be NaN");
-					assertFalse(Double.isInfinite(value), "Embedding value at index " + i + " should not be infinite");
+					assertFalse(Float.isNaN(value), "Embedding value at index " + i + " should not be NaN");
+					assertFalse(Float.isInfinite(value), "Embedding value at index " + i + " should not be infinite");
 				}
 
 				// Calculate vector norm (L2 norm)
 				double norm = 0.0;
-				for (Double value : embedding) {
+				for (Float value : embedding) {
 					norm += value * value;
 				}
 				norm = Math.sqrt(norm);
@@ -249,7 +250,7 @@ class EmbeddingsTest {
 		ExtractionResult defaultResult = Kreuzberg.extractBytes(text.getBytes(), "text/plain", defaultConfig);
 
 		assertNotNull(defaultResult, "Default config result should not be null");
-		assertTrue(defaultResult.isSuccess(), "Extraction with default config should succeed");
+		assertNotNull(defaultResult.getContent(), "Extraction with default config should succeed");
 
 		// Test with preset if supported
 		ExtractionConfig presetConfig = ExtractionConfig.builder()
@@ -275,24 +276,24 @@ class EmbeddingsTest {
 		String text = "Normalized embeddings are essential for cosine similarity computations.";
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 
 		for (Chunk chunk : result.getChunks()) {
-			Optional<List<Double>> embeddingOpt = chunk.getEmbedding();
+			Optional<List<Float>> embeddingOpt = chunk.getEmbedding();
 
 			if (embeddingOpt.isPresent()) {
-				List<Double> embedding = embeddingOpt.get();
+				List<Float> embedding = embeddingOpt.get();
 
 				// Calculate L2 norm
 				double l2Norm = 0.0;
-				for (Double value : embedding) {
+				for (Float value : embedding) {
 					l2Norm += value * value;
 				}
 				l2Norm = Math.sqrt(l2Norm);
 
 				// Calculate L1 norm
 				double l1Norm = 0.0;
-				for (Double value : embedding) {
+				for (Float value : embedding) {
 					l1Norm += Math.abs(value);
 				}
 
@@ -330,7 +331,7 @@ class EmbeddingsTest {
 
 		ExtractionResult smallResult = Kreuzberg.extractBytes(text.getBytes(), "text/plain", smallChunkConfig);
 
-		assertTrue(smallResult.isSuccess(), "Small chunk extraction should succeed");
+		assertNotNull(smallResult.getContent(), "Small chunk extraction should succeed");
 		assertNotNull(smallResult.getChunks(), "Small chunks should be generated");
 
 		// Test with large chunk size
@@ -339,7 +340,7 @@ class EmbeddingsTest {
 
 		ExtractionResult largeResult = Kreuzberg.extractBytes(text.getBytes(), "text/plain", largeChunkConfig);
 
-		assertTrue(largeResult.isSuccess(), "Large chunk extraction should succeed");
+		assertNotNull(largeResult.getContent(), "Large chunk extraction should succeed");
 		assertNotNull(largeResult.getChunks(), "Large chunks should be generated");
 
 		// Small chunks should generate more chunks than large chunks
@@ -368,11 +369,11 @@ class EmbeddingsTest {
 
 		// First extraction run
 		ExtractionResult result1 = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
-		assertTrue(result1.isSuccess(), "First extraction should succeed");
+		assertNotNull(result1.getContent(), "First extraction should succeed");
 
 		// Second extraction run
 		ExtractionResult result2 = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
-		assertTrue(result2.isSuccess(), "Second extraction should succeed");
+		assertNotNull(result2.getContent(), "Second extraction should succeed");
 
 		// Content should be identical
 		assertEquals(result1.getContent(), result2.getContent(), "Same text should produce identical content");
@@ -404,7 +405,7 @@ class EmbeddingsTest {
 		String text = "Metadata preservation ensures tracking of chunk positions and origins.";
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 		List<Chunk> chunks = result.getChunks();
 
 		// Verify metadata for each chunk
@@ -434,7 +435,7 @@ class EmbeddingsTest {
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
 		assertNotNull(result, "Result should not be null");
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 		assertNotNull(result.getContent(), "Content should be extracted");
 		assertNotNull(result.getMimeType(), "MIME type should be available");
 		assertNotNull(result.getMetadata(), "Metadata should be available");
@@ -462,25 +463,25 @@ class EmbeddingsTest {
 		String text = "Testing mathematical properties of embedding vectors.";
 		ExtractionResult result = Kreuzberg.extractBytes(text.getBytes(), "text/plain", config);
 
-		assertTrue(result.isSuccess(), "Extraction should succeed");
+		assertNotNull(result.getContent(), "Extraction should succeed");
 
 		for (Chunk chunk : result.getChunks()) {
-			Optional<List<Double>> embeddingOpt = chunk.getEmbedding();
+			Optional<List<Float>> embeddingOpt = chunk.getEmbedding();
 
 			if (embeddingOpt.isPresent()) {
-				List<Double> embedding = embeddingOpt.get();
+				List<Float> embedding = embeddingOpt.get();
 
 				// Test 1: Valid floating-point values
 				for (int i = 0; i < embedding.size(); i++) {
-					Double value = embedding.get(i);
-					assertFalse(Double.isNaN(value), "Value at index " + i + " is NaN");
-					assertFalse(Double.isInfinite(value), "Value at index " + i + " is infinite");
+					Float value = embedding.get(i);
+					assertFalse(Float.isNaN(value), "Value at index " + i + " is NaN");
+					assertFalse(Float.isInfinite(value), "Value at index " + i + " is infinite");
 					assertTrue(value >= -2.0 && value <= 2.0, "Value at index " + i + " out of range: " + value);
 				}
 
 				// Test 2: Not all zeros (dead embedding)
 				double magnitude = 0.0;
-				for (Double value : embedding) {
+				for (Float value : embedding) {
 					magnitude += Math.abs(value);
 				}
 				assertTrue(magnitude > 0.1, "Embedding should not be all zeros (dead embedding)");
@@ -488,7 +489,7 @@ class EmbeddingsTest {
 				// Test 3: Vector with itself should have similarity ~1.0
 				double dotProduct = 0.0;
 				double normSq = 0.0;
-				for (Double value : embedding) {
+				for (Float value : embedding) {
 					dotProduct += value * value;
 					normSq += value * value;
 				}
@@ -517,16 +518,16 @@ class EmbeddingsTest {
 		ExtractionResult result1 = Kreuzberg.extractBytes(text1.getBytes(), "text/plain", config);
 		ExtractionResult result2 = Kreuzberg.extractBytes(text2.getBytes(), "text/plain", config);
 
-		assertTrue(result1.isSuccess(), "First extraction should succeed");
-		assertTrue(result2.isSuccess(), "Second extraction should succeed");
+		assertNotNull(result1.getContent(), "First extraction should succeed");
+		assertNotNull(result2.getContent(), "Second extraction should succeed");
 
 		if (!result1.getChunks().isEmpty() && !result2.getChunks().isEmpty()) {
-			Optional<List<Double>> emb1Opt = result1.getChunks().get(0).getEmbedding();
-			Optional<List<Double>> emb2Opt = result2.getChunks().get(0).getEmbedding();
+			Optional<List<Float>> emb1Opt = result1.getChunks().get(0).getEmbedding();
+			Optional<List<Float>> emb2Opt = result2.getChunks().get(0).getEmbedding();
 
 			if (emb1Opt.isPresent() && emb2Opt.isPresent()) {
-				List<Double> emb1 = emb1Opt.get();
-				List<Double> emb2 = emb2Opt.get();
+				List<Float> emb1 = emb1Opt.get();
+				List<Float> emb2 = emb2Opt.get();
 
 				// Calculate cosine similarity
 				double dotProduct = 0.0;

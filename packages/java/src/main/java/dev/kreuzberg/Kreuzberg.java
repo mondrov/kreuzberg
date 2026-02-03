@@ -310,7 +310,7 @@ public final class Kreuzberg {
 			try {
 				ExtractionResult result = extractFile(path, config);
 				future.complete(result);
-			} catch (IOException | KreuzbergException e) {
+			} catch (Throwable e) {
 				future.completeExceptionally(e);
 			}
 		});
@@ -339,7 +339,7 @@ public final class Kreuzberg {
 			try {
 				ExtractionResult result = extractBytes(data, mimeType, config);
 				future.complete(result);
-			} catch (KreuzbergException e) {
+			} catch (Throwable e) {
 				future.completeExceptionally(e);
 			}
 		});
@@ -367,7 +367,7 @@ public final class Kreuzberg {
 			try {
 				List<ExtractionResult> results = batchExtractFiles(paths, config);
 				future.complete(results);
-			} catch (KreuzbergException e) {
+			} catch (Throwable e) {
 				future.completeExceptionally(e);
 			}
 		});
@@ -395,7 +395,7 @@ public final class Kreuzberg {
 			try {
 				List<ExtractionResult> results = batchExtractBytes(items, config);
 				future.complete(results);
-			} catch (KreuzbergException e) {
+			} catch (Throwable e) {
 				future.completeExceptionally(e);
 			}
 		});
@@ -1209,8 +1209,16 @@ public final class Kreuzberg {
 	private static ExtractionResult parseResult(MemorySegment resultPtr) throws Throwable {
 		MemorySegment result = resultPtr.reinterpret(KreuzbergFFI.C_EXTRACTION_RESULT_LAYOUT.byteSize());
 
+		boolean success = result.get(ValueLayout.JAVA_BOOLEAN, KreuzbergFFI.SUCCESS_OFFSET);
+		if (!success) {
+			throw KreuzbergFFI.createTypedException("Extraction failed (success flag is false)");
+		}
+
 		String content = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.CONTENT_OFFSET));
 		String mimeType = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.MIME_TYPE_OFFSET));
+		String language = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.LANGUAGE_OFFSET));
+		String date = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.DATE_OFFSET));
+		String subject = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.SUBJECT_OFFSET));
 		String tablesJson = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.TABLES_OFFSET));
 		String detectedLanguagesJson = KreuzbergFFI
 				.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.DETECTED_LANGUAGES_OFFSET));
@@ -1221,10 +1229,10 @@ public final class Kreuzberg {
 		String pageStructureJson = KreuzbergFFI
 				.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.PAGE_STRUCTURE_OFFSET));
 		String elementsJson = KreuzbergFFI.readCString(result.get(ValueLayout.ADDRESS, KreuzbergFFI.ELEMENTS_OFFSET));
-		boolean success = result.get(ValueLayout.JAVA_BOOLEAN, KreuzbergFFI.SUCCESS_OFFSET);
+		// DjotContent not yet available from FFI; pass null for now
 
 		return ResultParser.parse(content, mimeType, tablesJson, detectedLanguagesJson, metadataJson, chunksJson,
-				imagesJson, pagesJson, pageStructureJson, elementsJson, success);
+				imagesJson, pagesJson, pageStructureJson, elementsJson, null, language, date, subject);
 	}
 
 	/**
@@ -1254,8 +1262,8 @@ public final class Kreuzberg {
 			for (long i = 0; i < count; i++) {
 				MemorySegment ptr = array.getAtIndex(ValueLayout.ADDRESS, i);
 				if (ptr == null || ptr.address() == 0) {
-					results.add(new ExtractionResult("", "", Collections.emptyMap(), List.of(), List.of(), List.of(),
-							List.of(), List.of(), null, List.of(), false));
+					results.add(new ExtractionResult("", "", Metadata.empty(), List.of(), List.of(), List.of(),
+							List.of(), List.of(), null, List.of(), null));
 				} else {
 					// Use parseResult (not parseAndFreeResult) to avoid double-free.
 					// Memory is freed collectively by KREUZBERG_FREE_BATCH_RESULT in the finally

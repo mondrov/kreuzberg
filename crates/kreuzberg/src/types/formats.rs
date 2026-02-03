@@ -1,6 +1,8 @@
 //! Format-specific extraction results and OCR configuration types.
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use super::extraction::ExtractedImage;
@@ -153,8 +155,9 @@ pub struct EmailAttachment {
     pub size: Option<usize>,
     /// Whether this attachment is an image
     pub is_image: bool,
-    /// Attachment data (if extracted)
-    pub data: Option<Vec<u8>>,
+    /// Attachment data (if extracted).
+    /// Uses `bytes::Bytes` for cheap cloning of large buffers.
+    pub data: Option<Bytes>,
 }
 
 /// OCR extraction result.
@@ -351,6 +354,7 @@ impl Default for TesseractConfig {
 /// Tracks the transformations applied to an image during OCR preprocessing,
 /// including DPI normalization, resizing, and resampling.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct ImagePreprocessingMetadata {
     /// Original image dimensions (width, height) in pixels
     pub original_dimensions: (usize, usize),
@@ -435,9 +439,9 @@ pub struct LibreOfficeConversionResult {
     /// Converted file bytes
     pub converted_bytes: Vec<u8>,
     /// Original format identifier
-    pub original_format: String,
+    pub original_format: Cow<'static, str>,
     /// Target format identifier
-    pub target_format: String,
+    pub target_format: Cow<'static, str>,
     /// Target MIME type after conversion
-    pub target_mime: String,
+    pub target_mime: Cow<'static, str>,
 }

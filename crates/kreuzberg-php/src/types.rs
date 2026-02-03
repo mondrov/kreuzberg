@@ -377,7 +377,7 @@ impl ExtractionResult {
 
         // Add additional metadata fields (from postprocessors)
         for (key, value) in &result.metadata.additional {
-            metadata_obj.insert(key.clone(), value.clone());
+            metadata_obj.insert(key.to_string(), value.clone());
         }
 
         // Serialize the metadata to JSON string
@@ -431,7 +431,7 @@ impl ExtractionResult {
 
         Ok(Self {
             content: result.content,
-            mime_type: result.mime_type,
+            mime_type: result.mime_type.to_string(),
             metadata_json,
             tables,
             detected_languages: result.detected_languages,
@@ -546,8 +546,8 @@ impl ExtractedImage {
 impl ExtractedImage {
     pub fn from_rust(img: kreuzberg::ExtractedImage) -> PhpResult<Self> {
         Ok(Self {
-            data: img.data,
-            format: img.format,
+            data: img.data.to_vec(),
+            format: img.format.into_owned(),
             image_index: img.image_index,
             page_number: img.page_number,
             width: img.width.map(|w| w as i32),

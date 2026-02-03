@@ -5,6 +5,7 @@
 
 use crate::core::config::OutputFormat;
 use crate::types::ExtractionResult;
+use std::borrow::Cow;
 
 /// Apply output format conversion to the extraction result.
 ///
@@ -23,7 +24,7 @@ use crate::types::ExtractionResult;
 /// * `output_format` - The desired output format
 pub fn apply_output_format(result: &mut ExtractionResult, output_format: OutputFormat) {
     // Check if content was already formatted during extraction
-    let already_formatted = match result.mime_type.as_str() {
+    let already_formatted = match &*result.mime_type {
         "text/markdown" if output_format == OutputFormat::Markdown => true,
         "text/djot" if output_format == OutputFormat::Djot => true,
         _ => false,
@@ -46,7 +47,7 @@ pub fn apply_output_format(result: &mut ExtractionResult, output_format: OutputF
                 Err(e) => {
                     // Keep original content on error, record error in metadata
                     result.metadata.additional.insert(
-                        "output_format_error".to_string(),
+                        Cow::Borrowed("output_format_error"),
                         serde_json::Value::String(format!("Failed to convert to djot: {}", e)),
                     );
                 }
@@ -66,7 +67,7 @@ pub fn apply_output_format(result: &mut ExtractionResult, output_format: OutputF
                     Err(e) => {
                         // Keep original content on error, record error in metadata
                         result.metadata.additional.insert(
-                            "output_format_error".to_string(),
+                            Cow::Borrowed("output_format_error"),
                             serde_json::Value::String(format!("Failed to convert to markdown: {}", e)),
                         );
                     }
@@ -87,7 +88,7 @@ pub fn apply_output_format(result: &mut ExtractionResult, output_format: OutputF
                             Err(e) => {
                                 // Keep original content on error, record error in metadata
                                 result.metadata.additional.insert(
-                                    "output_format_error".to_string(),
+                                    Cow::Borrowed("output_format_error"),
                                     serde_json::Value::String(format!("Failed to convert djot to HTML: {}", e)),
                                 );
                             }
@@ -96,7 +97,7 @@ pub fn apply_output_format(result: &mut ExtractionResult, output_format: OutputF
                     Err(e) => {
                         // Keep original content on error, record error in metadata
                         result.metadata.additional.insert(
-                            "output_format_error".to_string(),
+                            Cow::Borrowed("output_format_error"),
                             serde_json::Value::String(format!("Failed to generate djot for HTML conversion: {}", e)),
                         );
                     }
@@ -128,7 +129,7 @@ mod tests {
     fn test_apply_output_format_plain() {
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -151,7 +152,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/djot".to_string(),
+            mime_type: Cow::Borrowed("text/djot"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -180,7 +181,7 @@ mod tests {
                 images: vec![],
                 links: vec![],
                 footnotes: vec![],
-                attributes: std::collections::HashMap::new(),
+                attributes: Vec::new(),
             }),
         };
 
@@ -194,7 +195,7 @@ mod tests {
     fn test_apply_output_format_djot_without_djot_content() {
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -216,7 +217,7 @@ mod tests {
     fn test_apply_output_format_html() {
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -239,7 +240,7 @@ mod tests {
     fn test_apply_output_format_html_escapes_special_chars() {
         let mut result = ExtractionResult {
             content: "<script>alert('XSS')</script>".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -262,7 +263,7 @@ mod tests {
     fn test_apply_output_format_markdown() {
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -281,8 +282,9 @@ mod tests {
 
     #[test]
     fn test_apply_output_format_preserves_metadata() {
-        let mut additional = std::collections::HashMap::new();
-        additional.insert("custom_key".to_string(), serde_json::json!("custom_value"));
+        use ahash::AHashMap;
+        let mut additional = AHashMap::new();
+        additional.insert(Cow::Borrowed("custom_key"), serde_json::json!("custom_value"));
         let metadata = Metadata {
             title: Some("Test Title".to_string()),
             additional,
@@ -291,7 +293,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata,
             tables: vec![],
             detected_languages: None,
@@ -324,7 +326,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Hello World".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![table],
             detected_languages: None,
@@ -367,12 +369,12 @@ mod tests {
             images: vec![],
             links: vec![],
             footnotes: vec![],
-            attributes: std::collections::HashMap::new(),
+            attributes: Vec::new(),
         };
 
         let mut result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/djot".to_string(),
+            mime_type: Cow::Borrowed("text/djot"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,

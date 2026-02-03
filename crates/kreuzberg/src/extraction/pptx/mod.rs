@@ -45,6 +45,8 @@ mod image_handling;
 mod metadata;
 mod parser;
 
+use bytes::Bytes;
+
 use crate::error::Result;
 use crate::types::{ExtractedImage, PptxExtractionResult};
 
@@ -117,8 +119,8 @@ pub fn extract_pptx_from_path(
                 let image_index = extracted_images.len();
 
                 extracted_images.push(ExtractedImage {
-                    data,
-                    format,
+                    data: Bytes::from(data),
+                    format, // Already a Cow<'static, str> from detect_image_format
                     image_index,
                     page_number: Some(slide.slide_number as usize),
                     width: None,
@@ -333,11 +335,13 @@ mod tests {
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">"#,
             );
             for (i, _) in slides.iter().enumerate() {
-                rels_xml.push_str(&format!(
+                use std::fmt::Write;
+                let _ = write!(
+                    rels_xml,
                     r#"<Relationship Id="rId{}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide{}.xml"/>"#,
                     i + 1,
                     i + 1
-                ));
+                );
             }
             rels_xml.push_str("</Relationships>");
             zip.start_file("ppt/_rels/presentation.xml.rels", options).unwrap();

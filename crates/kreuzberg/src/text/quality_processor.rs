@@ -15,6 +15,7 @@
 use crate::plugins::{Plugin, PostProcessor, ProcessingStage};
 use crate::{ExtractionConfig, ExtractionResult, Result};
 use async_trait::async_trait;
+use std::borrow::Cow;
 
 /// Post-processor that calculates quality score and cleans text.
 ///
@@ -65,7 +66,7 @@ impl PostProcessor for QualityProcessor {
         };
 
         result.metadata.additional.insert(
-            "quality_score".to_string(),
+            Cow::Borrowed("quality_score"),
             serde_json::Value::Number(
                 serde_json::Number::from_f64(quality_score).unwrap_or(serde_json::Number::from(0)),
             ),
@@ -116,7 +117,7 @@ mod tests {
 
         let mut result = ExtractionResult {
 	            content: "This is a well-written paragraph with proper structure. It contains multiple sentences. The quality should be good.".to_string(),
-	            mime_type: "text/plain".to_string(),
+	            mime_type: Cow::Borrowed("text/plain"),
 	            metadata: Metadata::default(),
 	            tables: vec![],
 	            detected_languages: None,
@@ -144,7 +145,7 @@ mod tests {
 
         let mut result = ExtractionResult {
             content: "Some text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -179,7 +180,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "Sample text".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -209,7 +210,7 @@ mod tests {
 
         let short_result = ExtractionResult {
             content: "Short".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -222,7 +223,7 @@ mod tests {
 
         let long_result = ExtractionResult {
             content: "a".repeat(1000000),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: Metadata::default(),
             tables: vec![],
             detected_languages: None,

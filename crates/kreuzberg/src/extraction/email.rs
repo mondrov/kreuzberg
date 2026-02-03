@@ -24,6 +24,8 @@
 //! # Ok(())
 //! # }
 //! ```
+use bytes::Bytes;
+
 use crate::error::{KreuzbergError, Result};
 use crate::types::{EmailAttachment, EmailExtractionResult};
 use mail_parser::MimeHeaders;
@@ -101,7 +103,7 @@ pub fn parse_eml_content(data: &[u8]) -> Result<EmailExtractionResult> {
 
     let html_content = message.body_html(0).map(|s| s.to_string());
 
-    let cleaned_text = if let Some(plain) = &plain_text {
+    let cleaned_text = if let Some(ref plain) = plain_text {
         plain.clone()
     } else if let Some(html) = &html_content {
         clean_html_content(html)
@@ -132,7 +134,7 @@ pub fn parse_eml_content(data: &[u8]) -> Result<EmailExtractionResult> {
             mime_type: Some(mime_type),
             size: Some(size),
             is_image,
-            data: Some(data.to_vec()),
+            data: Some(Bytes::copy_from_slice(data)),
         });
     }
 
@@ -174,39 +176,49 @@ pub fn parse_msg_content(data: &[u8]) -> Result<EmailExtractionResult> {
     let to_emails = outlook
         .to
         .iter()
-        .map(|p| p.email.clone())
-        .filter(|e| !e.is_empty())
+        .filter_map(|p| {
+            if p.email.is_empty() {
+                None
+            } else {
+                Some(p.email.clone())
+            }
+        })
         .collect::<Vec<String>>();
 
     let cc_emails = outlook
         .cc
         .iter()
-        .map(|p| p.email.clone())
-        .filter(|e| !e.is_empty())
+        .filter_map(|p| {
+            if p.email.is_empty() {
+                None
+            } else {
+                Some(p.email.clone())
+            }
+        })
         .collect::<Vec<String>>();
 
-    let bcc_emails = if !outlook.bcc.is_empty() {
-        vec![outlook.bcc.clone()]
-    } else {
+    let bcc_emails = if outlook.bcc.is_empty() {
         vec![]
+    } else {
+        vec![outlook.bcc.clone()]
     };
 
-    let date = if !outlook.headers.date.is_empty() {
+    let date = if outlook.headers.date.is_empty() {
+        None
+    } else {
         Some(outlook.headers.date.clone())
-    } else {
-        None
     };
 
-    let message_id = if !outlook.headers.message_id.is_empty() {
+    let message_id = if outlook.headers.message_id.is_empty() {
+        None
+    } else {
         Some(outlook.headers.message_id.clone())
-    } else {
-        None
     };
 
-    let plain_text = if !outlook.body.is_empty() {
-        Some(outlook.body.clone())
-    } else {
+    let plain_text = if outlook.body.is_empty() {
         None
+    } else {
+        Some(outlook.body.clone())
     };
 
     let html_content = None;
@@ -231,7 +243,7 @@ pub fn parse_msg_content(data: &[u8]) -> Result<EmailExtractionResult> {
             };
 
             let data = if !att.payload.is_empty() {
-                hex::decode(&att.payload).ok()
+                hex::decode(&att.payload).ok().map(Bytes::from)
             } else {
                 None
             };

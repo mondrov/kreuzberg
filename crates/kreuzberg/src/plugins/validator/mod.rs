@@ -19,8 +19,9 @@ mod tests {
     use crate::core::config::ExtractionConfig;
     use crate::plugins::Plugin;
     use crate::types::ExtractionResult;
+    use ahash::AHashMap;
     use async_trait::async_trait;
-    use std::collections::HashMap;
+    use std::borrow::Cow;
 
     struct MockValidator {
         should_fail: bool,
@@ -61,7 +62,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test content".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -82,7 +83,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test content".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -105,7 +106,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -143,7 +144,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: String::new(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -193,7 +194,7 @@ mod tests {
 
         let pdf_result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "application/pdf".to_string(),
+            mime_type: Cow::Borrowed("application/pdf"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -206,7 +207,7 @@ mod tests {
 
         let txt_result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -292,7 +293,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
@@ -318,12 +319,12 @@ mod tests {
     async fn test_validator_with_metadata() {
         let validator = MockValidator { should_fail: false };
 
-        let mut additional = HashMap::new();
-        additional.insert("quality_score".to_string(), serde_json::json!(0.95));
+        let mut additional = AHashMap::new();
+        additional.insert(Cow::Borrowed("quality_score"), serde_json::json!(0.95));
 
         let result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata {
                 additional,
                 ..Default::default()
@@ -355,7 +356,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test".to_string(),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![table],
             detected_languages: None,
@@ -386,7 +387,7 @@ mod tests {
         for mime_type in mime_types {
             let result = ExtractionResult {
                 content: "test".to_string(),
-                mime_type: mime_type.to_string(),
+                mime_type: Cow::Borrowed(mime_type),
                 metadata: crate::types::Metadata::default(),
                 tables: vec![],
                 detected_languages: None,
@@ -407,7 +408,7 @@ mod tests {
 
         let result = ExtractionResult {
             content: "test content ".repeat(10000),
-            mime_type: "text/plain".to_string(),
+            mime_type: Cow::Borrowed("text/plain"),
             metadata: crate::types::Metadata::default(),
             tables: vec![],
             detected_languages: None,
