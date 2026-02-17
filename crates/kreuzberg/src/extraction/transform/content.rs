@@ -16,12 +16,12 @@ pub(super) fn process_content(elements: &mut Vec<Element>, content: &str, page_n
     for list_item in list_items {
         // Add narrative text/paragraphs before this list item
         if current_byte_offset < list_item.byte_start {
-            let text_slice = content[current_byte_offset..list_item.byte_start].trim();
+            let text_slice = content[content.floor_char_boundary(current_byte_offset)..content.floor_char_boundary(list_item.byte_start)].trim();
             add_paragraphs(elements, text_slice, page_number, title);
         }
 
         // Add the list item itself
-        let item_text = content[list_item.byte_start..list_item.byte_end].trim();
+        let item_text = content[content.floor_char_boundary(list_item.byte_start)..content.ceil_char_boundary(list_item.byte_end)].trim();
         if !item_text.is_empty() {
             let element_id = generate_element_id(item_text, ElementType::ListItem, Some(page_number));
             elements.push(Element {
@@ -48,7 +48,7 @@ pub(super) fn process_content(elements: &mut Vec<Element>, content: &str, page_n
 
     // Add any remaining narrative text/paragraphs
     if current_byte_offset < content.len() {
-        let text_slice = content[current_byte_offset..].trim();
+        let text_slice = content[content.floor_char_boundary(current_byte_offset)..].trim();
         add_paragraphs(elements, text_slice, page_number, title);
     }
 }
